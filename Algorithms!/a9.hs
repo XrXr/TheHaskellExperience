@@ -1,5 +1,7 @@
 import Data.List
 import Data.Maybe
+import Numeric (showFFloat)
+
 
 fib0 :: Int -> Int
 fib0 n
@@ -53,16 +55,21 @@ majority' l  = foldl' (\acc x -> if isMajority (find x) then Just x else acc) No
           find e       = elemIndices e l
           isMajority a = length a >= middle + 1
 
-canadian_change :: Integral a => a -> String
+canadian_change :: (Integral a, Show a) => a -> IO()
 -- I still haven't learned about IO yet and monads
-canadian_change n = "$" ++ show (fromIntegral n / 100) ++ " get rounded to $" ++ show (fromIntegral rounded / 100)
-    where rounded           = if n `mod` 5 < 3 then n - n `mod` 5 else n - n `mod` 5 + 5
+canadian_change n = putStr result
+    where twoDecimal a      = showFFloat (Just 2) a ""
+          rounded           = if n `mod` 5 < 3 then n - n `mod` 5 else n - n `mod` 5 + 5
           change acc x      = snd acc `div` x
           remaind acc x     = snd acc `mod` x
-          bills             = [100, 50, 20, 10, 5, 2, 1, 0.25, 0.1, 0.05]
-          faceValues        = map (floor . (*100)) bills
-          processed         = scanl (\acc x -> (change acc x, remaind acc x)) (0, rounded) faceValues
-          printOut a        = if fst a /= 0 then show (fst a) ++ " x "
+          faceValues        = [100, 50, 20, 10, 5, 2, 1, 0.25, 0.1, 0.05]
+          inCents           = map (floor . (*100)) faceValues
+          raw               = tail $ scanl (\acc x -> (change acc x, remaind acc x)) (0, rounded) inCents
+          processed         = zip faceValues $ map fst raw
+          printOut acc x    = if snd x /= 0 then acc ++ show (snd x) ++ " x $" ++ twoDecimal (fst x) ++ "\n" else acc
+          result            = "$" ++ twoDecimal (fromIntegral n / 100) 
+                              ++ " get rounded to $" ++ twoDecimal (fromIntegral rounded / 100) ++ "\n"
+                              ++ foldl' printOut "" processed
 
 
 main = putStrLn "Hello World"
