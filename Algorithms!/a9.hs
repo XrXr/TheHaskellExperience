@@ -36,7 +36,7 @@ majority :: (Num a, Ord a) => [a] -> Maybe a
 -- [a,a,a,b,b] or [b,b,a,a,a] this still hold
 majority l
     | null l     = Nothing
-    | isEven       = if same (take (middle + 1) sorted)
+    | isEven     = if same (take (middle + 1) sorted)
                    || same (drop (middle - 1) sorted)
                    then Just $ sorted !! middle else Nothing
     | otherwise  = if same (take (middle + 1) sorted)
@@ -56,7 +56,7 @@ majority' l  = foldl' (\acc x -> if isMajority (find x) then Just x else acc) No
           isMajority a = length a >= middle + 1
 
 canadian_change :: (Integral a, Show a) => a -> IO()
--- I still haven't learned about IO yet and monads
+-- I still haven't learned about IO and monads yet
 canadian_change n = putStr result
     where twoDecimal a      = showFFloat (Just 2) a ""
           rounded           = if n `mod` 5 < 3 then n - n `mod` 5 else n - n `mod` 5 + 5
@@ -71,5 +71,17 @@ canadian_change n = putStr result
                               ++ " get rounded to $" ++ twoDecimal (fromIntegral rounded / 100) ++ "\n"
                               ++ foldl' printOut "" processed
 
+triple_sum :: (Eq a, Num a) => [a] -> a -> Maybe (Int, Int, Int)
+triple_sum l x 
+    | canidates == []     = Nothing 
+    | isGoodResult result = Just result
+    | otherwise           = Nothing
+    where addTo a                = [(e + a, e, a) | e <- l, a /= e]
+          twoSums                = foldr (\e acc -> addTo e ++ acc) [] l  -- list of 2-sums and their elements
+          canidates              = filter (\(a, _, _) -> x - a `elem` l) twoSums
+          find a                 = (\(Just e) -> e) $ elemIndex a l
+          findResult (a, b, c)   = (find b, find c, find (x - (b + c)))
+          result                 = findResult (head canidates)
+          isGoodResult (a, b, c) = a /= b && a /= c && b /= c
 
 main = putStrLn "Hello World"
