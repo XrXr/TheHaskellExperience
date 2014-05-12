@@ -72,6 +72,8 @@ canadian_change n = putStr result
                               ++ foldl' printOut "" processed
 
 triple_sum :: (Eq a, Num a) => [a] -> a -> Maybe (Int, Int, Int)
+-- This version assumes the elements in the list are unique
+-- triple_sum [1, 5, 5, 8, 2, 6, 55, 90] 100 returns Nothing
 triple_sum l x 
     | canidates == []     = Nothing 
     | isGoodResult result = Just result
@@ -83,5 +85,27 @@ triple_sum l x
           findResult (a, b, c)   = (find b, find c, find (x - (b + c)))
           result                 = findResult (head canidates)
           isGoodResult (a, b, c) = a /= b && a /= c && b /= c
+
+triple_sum' :: (Eq a, Num a) => [a] -> a -> Maybe (Int, Int, Int)
+-- This version works on any list
+-- triple_sum' [1, 5, 5, 8, 2, 6, 55, 90] 100 returns Just (1,2,7)
+triple_sum' l x
+    | canidates == [] = Nothing
+    | result == []    = Nothing
+    | otherwise       = (\(a, b, [c]) -> Just (a, b, c)) $ head result
+    where addTo a                = [(e + a, e, a) | e <- delete a l]
+          twoSums                = foldr (\e acc -> addTo e ++ acc) [] l  -- list of 2-sums and their elements
+          canidates              = filter (\(a, _, _) -> x - a `elem` l) twoSums -- x - sum of 2 is in the list
+          find a                 = (\(Just e) -> e) $ elemIndex a l
+          findSecond first a     = head $ filter (\x -> x /= first) $ elemIndices a l
+          findThird first second = filter (\x -> x /= first && x /= second) $
+                                        elemIndices (x - (l !! first + l !! second)) l
+          makeTirple (_, b, c)   = (first, second, third)
+                                    where first  = find b
+                                          second = findSecond first c
+                                          third  = findThird first second
+          possibleResult         = map makeTirple canidates
+          result                 = filter (\(_, _, c) -> c /= []) possibleResult
+
 
 main = putStrLn "Hello World"
