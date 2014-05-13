@@ -58,18 +58,18 @@ majority' l  = foldl' (\acc x -> if isMajority (find x) then Just x else acc) No
 canadian_change :: (Integral a, Show a) => a -> IO()
 -- I still haven't learned about IO and monads yet
 canadian_change n = putStr result
-    where twoDecimal a      = showFFloat (Just 2) a ""
-          rounded           = if n `mod` 5 < 3 then n - n `mod` 5 else n - n `mod` 5 + 5
-          change acc x      = snd acc `div` x
-          remaind acc x     = snd acc `mod` x
-          faceValues        = [100, 50, 20, 10, 5, 2, 1, 0.25, 0.1, 0.05]
-          inCents           = map (floor . (*100)) faceValues
-          raw               = tail $ scanl (\acc x -> (change acc x, remaind acc x)) (0, rounded) inCents
-          processed         = zip faceValues $ map fst raw
-          printOut acc x    = if snd x /= 0 then acc ++ show (snd x) ++ " x $" ++ twoDecimal (fst x) ++ "\n" else acc
-          result            = "$" ++ twoDecimal (fromIntegral n / 100) 
-                              ++ " get rounded to $" ++ twoDecimal (fromIntegral rounded / 100) ++ "\n"
-                              ++ foldl' printOut "" processed
+    where twoDecimal a   = showFFloat (Just 2) a ""
+          rounded        = if n `mod` 5 < 3 then n - n `mod` 5 else n - n `mod` 5 + 5
+          change acc x   = snd acc `div` x
+          remaind acc x  = snd acc `mod` x
+          faceValues     = [100, 50, 20, 10, 5, 2, 1, 0.25, 0.1, 0.05]
+          inCents        = map (floor . (*100)) faceValues
+          raw            = tail $ scanl (\acc x -> (change acc x, remaind acc x)) (0, rounded) inCents
+          processed      = zip faceValues $ map fst raw
+          printOut acc x = if snd x /= 0 then acc ++ show (snd x) ++ " x $" ++ twoDecimal (fst x) ++ "\n" else acc
+          result         = "$" ++ twoDecimal (fromIntegral n / 100) 
+                           ++ " get rounded to $" ++ twoDecimal (fromIntegral rounded / 100) ++ "\n"
+                           ++ foldl' printOut "" processed
 
 triple_sum :: (Eq a, Num a) => [a] -> a -> Maybe (Int, Int, Int)
 -- This version assumes the elements in the list are unique
@@ -107,5 +107,15 @@ triple_sum' l x
           possibleResult         = map makeTirple canidates
           result                 = filter (\(_, _, c) -> c /= []) possibleResult
 
+bentley :: (Ord a, Num a) => [a] -> Maybe (Int, Int)
+-- This isn't the real bentley algorithm
+bentley [] = Nothing
+bentley l = (\(s, e, _) -> Just (s, e)) maxRange
+    where range     = [0..length l - 1]
+          ranges    = concat $ map makeRange range
+          makeRange element = foldr (\x acc -> (element, x) : acc) [] $ drop element range -- drop until the element before it
+          sumRange (start, finish) = (start, finish, sum $ map (\x -> l !! x) [start..finish])
+          sumOfRanges = foldr (\x acc -> sumRange x:acc) [] ranges
+          maxRange = foldr (\x@(_, _, s') acc@(_, _, s) -> if s' > s then x else acc) (head sumOfRanges) sumOfRanges
 
 main = putStrLn "Hello World"
