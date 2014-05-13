@@ -6,7 +6,7 @@ import Numeric (showFFloat)
 fib0 :: Int -> Int
 fib0 n
     | n <= 0    = error "n must be larger than 0"
-    | otherwise = n ^ 2
+    | otherwise = 2 ^ n
 
 fib3 :: Int -> Integer
 fib3 n = squence !! n
