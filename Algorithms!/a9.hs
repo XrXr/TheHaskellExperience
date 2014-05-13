@@ -110,7 +110,7 @@ triple_sum' l x
 bentley :: (Ord a, Num a) => [a] -> Maybe (Int, Int)
 -- This isn't the real bentley algorithm
 bentley [] = Nothing
-bentley l = (\(s, e, _) -> Just (s, e)) maxRange
+bentley l = (\(s, e, _) -> Just (s, e + 1)) maxRange
     where range     = [0..length l - 1]
           ranges    = concat $ map makeRange range
           makeRange element = foldr (\x acc -> (element, x) : acc) [] $ drop element range -- drop until the element before it
