@@ -10,3 +10,6 @@ instance Show Card where
         | face == 12 = 'Q' : toUpper suit : []
         | face == 13 = 'K' : toUpper suit : []
         | otherwise  = show face ++ [toUpper suit]
+
+instance Eq Card where
+    (==) (Card a b) (Card c d) = a == c && b == d
