@@ -16,6 +16,12 @@ instance Eq Turn where
 extract :: Maybe a -> a
 extract (Just a) = a
 
+removeAt :: Int -> [a] -> [a]
+removeAt _ [] = []
+removeAt i l  = begin ++ drop 1 end
+    where (begin, end) = splitAt i l
+
+
 findPlayable :: Card -> Player -> [Int]
 findPlayable (Card face suit) (Player hand) = foldr foldFunction [] processed
     where processed = zipWith (\x (a, b) -> (x, a, b)) [0..length hand - 1] 
@@ -39,16 +45,19 @@ advance t = do putStrLn $ "Computer is holding " ++ (show . length) aiHand
                putStrLn $ "Discard pile : " ++ show discard
                putStrLn $ "Your hand: " ++ show player
                if playables == [] then drawOrPass else do
-                   putStrLn $ "Which card do you want to discard (" ++ choice ++ ")?"
-                   return t
---here!
+                    putStrLn $ "Which card do you want to discard (" ++ choice ++ ")?"
+                    selection <- getLine
+                    validate (reads selection :: [(Int, String)])
+                            
+
     where
         player@(Player playerHand) = getPlayer t
         ai@(Player aiHand)         = getAI t
         deck                       = getDeck t
         discard                    = getDiscard t
         playables                  = findPlayable discard player
-        choice                     = intercalate ", " 
+        choice                     = intercalate ", "
+                                     . zipWith (++) (map (\x -> show x ++ "=") [1..])
                                      . map (\x -> show $ playerHand !! x)
                                      $ playables
         drawOrPass                 = do putStrLn "You don't have anything to play, so you drew"
@@ -58,6 +67,17 @@ advance t = do putStrLn $ "Computer is holding " ++ (show . length) aiHand
                                         else 
                                             advance $ Turn (Player $ (extract drewCard):playerHand) ai deck' discard
             where (drewCard, deck') = draw deck
+        validate []                = putStrLn "Invalid input"
+                                     >> putStrLn ""
+                                     >> advance t
+        validate [(a, _)]          = if a `elem` [1..length playables] then 
+                                        return $ Turn p' ai deck d'
+                                     else
+                                        validate []
+            where choosen = playables !! (a - 1)
+                  d' = playerHand !! choosen
+                  p' = Player $ removeAt choosen playerHand
+        
 
 aiAdvance :: Turn -> IO Turn
 aiAdvance t = return t
@@ -66,13 +86,23 @@ game :: Turn -> IO Turn
 -- The game loop
 game t = do
             playerTurn <- advance t
-            aiTurn     <- aiAdvance playerTurn
-            if playerTurn == aiTurn then
-                putStrLn "The game ended in a draw!"
+            if playerWon playerTurn then
+                putStrLn "\nYou win!\n"
                 >> return t
-            else
-                game aiTurn
-
+            else do
+                aiTurn <- aiAdvance playerTurn
+                if aiWon aiTurn then
+                    putStrLn "\nThe computer won!\n"
+                    >> return t
+                else
+                    if playerTurn == aiTurn then
+                        putStrLn "\nThe game ended in a draw!\n"
+                        >> return t
+                    else
+                        game aiTurn
+    where
+        playerWon = (\(Player hand) -> null hand) . getPlayer
+        aiWon = (\(Player hand) -> null hand) . getAI
 --findPlayable (Card 4 'a') (Player [Card 6 'a',Card 4 'B',Card 8 'a', Card 0 'c'])
 main = do
         putStrLn "Welcome to Crazy Eights!"
