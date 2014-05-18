@@ -2,7 +2,7 @@ module Components.Card where
 
 import Data.Char
 
-data Card = Card Int Char
+data Card = Card {getFace :: Int, getSuit :: Char}
 instance Show Card where
     show (Card face suit)
         | face == 1  = 'A' : toUpper suit : []
