@@ -228,4 +228,5 @@ main = do
         getLine
         gen <- getStdGen
         game . initialize . (shuffle newDeck) $ gen
+        pause
         return ()
