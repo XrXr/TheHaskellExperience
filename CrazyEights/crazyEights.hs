@@ -211,7 +211,8 @@ game t = do
                     putStrLn "\nThe computer won!\n"
                     >> return t
                 else
-                    if playerTurn == aiTurn then
+                    -- both players passed, game is a draw
+                    if t == playerTurn && t == aiTurn then
                         putStrLn "\nThe game ended in a draw!\n"
                         >> return t
                     else
