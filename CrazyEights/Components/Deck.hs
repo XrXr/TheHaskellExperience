@@ -10,10 +10,10 @@ instance Show Deck where
                      $ show xs
 
 newDeck :: Deck
-newDeck = Deck $ map (\x -> Card x 'H') [1..13]
-              ++ map (\x -> Card x 'D') [1..13]
-              ++ map (\x -> Card x 'S') [1..13]
-              ++ map (\x -> Card x 'C') [1..13]
+newDeck = Deck $ map (\x -> Card x H) [1..13]
+              ++ map (\x -> Card x D) [1..13]
+              ++ map (\x -> Card x S) [1..13]
+              ++ map (\x -> Card x C) [1..13]
 
 emptyDeck :: Deck
 emptyDeck = Deck []
