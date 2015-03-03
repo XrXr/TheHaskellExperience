@@ -27,23 +27,23 @@ removeAt i l  = begin ++ drop 1 end
 pause :: IO()
 pause = threadDelay 1000000
 
--- |Match a card aginst a hand or a face
-findPlayable :: Card -> Player -> Maybe Char -> [Int]
-findPlayable (Card face suit) (Player hand) force
+-- |Match a card aginst a hand or a face. Return a list of indicies in the
+--  hand that are playable cards
+findPlayable :: Card -> Player -> Maybe Suit -> [Int]
+findPlayable (Card face suit) (Player hand) required_suit
     = foldr foldFunction [] processed
-    where processed = zipWith (\x (a, b) -> (x, a, b)) [0..length hand - 1]
+    where processed = zipWith (\i (f', s') -> (i, f', s')) [0..length hand - 1]
                         . map (\(Card f' s') -> (f', s')) $ hand
-          foldFunction (i, f', s') acc 
-              | force == Nothing = if face == f' 
-                                   || toUpper suit == toUpper s'
-                                   || f' == 8 then
-                                       i:acc else acc
-              | otherwise        = if toUpper (extract force) == toUpper s'
-                                   || f' == 8 then
-                                       i:acc else acc
+          foldFunction (i, f', s') acc = case required_suit of
+                  Nothing               -> if face == f' || suit == s'
+                                           || f' == 8 then
+                                              i:acc else acc
+                  (Just required_suit') -> if required_suit' == s'
+                                           || f' == 8 then
+                                              i:acc else acc
 
 -- |Takes a shuffled deck and return 2 players that 
--- both have 8 cards along with the new deck.
+--  both have 8 cards along with the new deck.
 initialize :: Deck -> Turn
 initialize shuffled = Turn (Player hand) (Player hand') deck''
     (extract discard) Nothing
