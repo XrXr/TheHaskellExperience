@@ -29,12 +29,12 @@ shuffleDeck :: RandomGen gen => Deck -> Deck -> gen -> Deck
 -- shuffle a Deck in O(n^2) (!! is O(n))
 -- never thought I would have to write this myself
 shuffleDeck shuffled (Deck []) _ = shuffled
-shuffleDeck (Deck shuffled) (Deck original) gen 
+shuffleDeck (Deck shuffled) (Deck original) gen
             = shuffleDeck (Deck shuffled') (Deck original') gen'
             where (elemIndex, gen') = randomR (0, length original - 1) gen
                   shuffled' = original !! elemIndex : shuffled
-                  original' = begin ++ tail end 
-                            where (begin, end) = splitAt elemIndex original 
+                  original' = begin ++ tail end
+                            where (begin, end) = splitAt elemIndex original
 
 shuffle :: RandomGen gen => Deck -> gen -> Deck
 shuffle deck = shuffleDeck (Deck []) deck

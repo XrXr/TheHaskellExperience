@@ -42,7 +42,7 @@ findPlayable (Card face suit) (Player hand) required_suit
                                            || f' == 8 then
                                               i:acc else acc
 
--- |Takes a shuffled deck and return 2 players that 
+-- |Takes a shuffled deck and return 2 players that
 --  both have 8 cards along with the new deck.
 initialize :: Deck -> Turn
 initialize shuffled = Turn (Player hand) (Player hand') deck''
@@ -64,12 +64,12 @@ advance t = do putStrLn $ "Computer is holding " ++ (show . length) aiHand
                     pause
                     drawOrPass 0 player deck
                 else do
-                    putStrLn $ "Which card do you want to discard (" 
+                    putStrLn $ "Which card do you want to discard ("
                         ++ choice ++ ")?"
                     selection <- getLine
                     validate (reads selection :: [(Int, String)])
     where
-        player@(Player playerHand) 
+        player@(Player playerHand)
                            = getPlayer t
         ai@(Player aiHand) = getAI t
         deck               = getDeck t
@@ -81,12 +81,12 @@ advance t = do putStrLn $ "Computer is holding " ++ (show . length) aiHand
                              . map (\x -> show $ playerHand !! x)
                              $ playables
         drawOrPass n p' d' = if length playables >= 1 then do
-                                putStrLn $ "You drew " ++ show n 
+                                putStrLn $ "You drew " ++ show n
                                     ++ " cards then played "
                                     ++ show cardToPlay
                                 if getFace cardToPlay == 8 then do
                                     s' <- inputSuit
-                                    return 
+                                    return
                                         $ Turn played ai d' cardToPlay
                                         $ Just s'
                                 else
@@ -94,7 +94,7 @@ advance t = do putStrLn $ "Computer is holding " ++ (show . length) aiHand
                                         $ Turn played ai d' cardToPlay
                                         Nothing
                              else
-                                if drewCard == Nothing then do 
+                                if drewCard == Nothing then do
                                     putStrLn $ "You drew " ++ show n
                                         ++ " cards and emptied the deck\
                                         \, so you passed"
@@ -104,16 +104,16 @@ advance t = do putStrLn $ "Computer is holding " ++ (show . length) aiHand
             where playables  = findPlayable discard p' suit
                   -- these only get evaluated when playables is not empty
                   cardToPlay = getHand p' !! head playables
-                  (drewCard, deck') 
+                  (drewCard, deck')
                              = draw d'
                   p''        = addCard (extract drewCard) p'
-                  played     = Player 
+                  played     = Player
                                $ removeAt (head playables) (getHand p')
         validate []        = putStrLn "Invalid input\n"
                              >> advance t
         validate [(a, _)]  = if a `elem` [1..length playables] then do
                                 putStrLn $ "You played " ++ show d'
-                                if getFace d' == 8 then do 
+                                if getFace d' == 8 then do
                                     suit' <- inputSuit
                                     return $ Turn p' ai deck d' $ Just suit'
                                 else
@@ -137,7 +137,7 @@ advance t = do putStrLn $ "Computer is holding " ++ (show . length) aiHand
                                      >> inputSuit
 
 aiAdvance :: Turn -> IO Turn
-aiAdvance t = do 
+aiAdvance t = do
     if length playables >= 1 then do
         putStrLn $ "Computer played " ++ show cardToPlay
         if getFace cardToPlay == 8 then
@@ -154,13 +154,13 @@ aiAdvance t = do
         discard            = getDiscard t
         playables          = findPlayable discard ai suit
         cardToPlay         = aiHand !! head playables
-        played             = Player 
+        played             = Player
                                 $ removeAt (head playables) aiHand
-        pickSuit p d c     = do 
+        pickSuit p d c     = do
                                 gen <- newStdGen
                                 let suit = ['H', 'D', 'S', 'C']
                                      !! fst (randomR (0, 3) gen)
-                                putStrLn $ "Computer chose to suit to be " 
+                                putStrLn $ "Computer chose to suit to be "
                                            ++ [suit]
                                 return $ Turn player p d c (Just suit)
         drawOrPass n p' d' = if length playables >= 1 then do
@@ -170,7 +170,7 @@ aiAdvance t = do
                                  if getFace cardToPlay == 8 then
                                     pickSuit played d' cardToPlay
                                  else
-                                    return 
+                                    return
                                         $ Turn player played d' cardToPlay
                                     Nothing
                              else
@@ -178,17 +178,17 @@ aiAdvance t = do
                                     putStrLn $ "Computer drew " ++ show n
                                         ++ " cards and emptied the deck"
                                     putStrLn "Computer passes"
-                                    return 
-                                        $ Turn player p' d' discard 
+                                    return
+                                        $ Turn player p' d' discard
                                         suit
                                 else
-                                    drawOrPass (n + 1) 
+                                    drawOrPass (n + 1)
                                         (addCard (extract drewCard) p') deck'
             where playables  = findPlayable discard p' suit
                   cardToPlay = getHand p' !! head playables
-                  played     = Player 
+                  played     = Player
                                $ removeAt (head playables) (getHand p')
-                  (drewCard, deck') 
+                  (drewCard, deck')
                              = draw d'
 
 game :: Turn -> IO Turn
@@ -220,7 +220,7 @@ game t = do
     where
         playerWon = (\(Player hand) -> null hand) . getPlayer
         aiWon = (\(Player hand) -> null hand) . getAI
---findPlayable (Card 4 'a') 
+--findPlayable (Card 4 'a')
 --(Player [Card 6 'a',Card 4 'B',Card 8 'a', Card 0 'c'])
 main = do
         putStrLn "Welcome to Crazy Eights!"
