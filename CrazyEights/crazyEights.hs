@@ -31,16 +31,13 @@ pause = threadDelay 1000000
 --  hand that are playable cards
 findPlayable :: Card -> Player -> Maybe Suit -> [Int]
 findPlayable (Card face suit) (Player hand) required_suit
-    = foldr foldFunction [] processed
-    where processed = zipWith (\i (f', s') -> (i, f', s')) [0..length hand - 1]
-                        . map (\(Card f' s') -> (f', s')) $ hand
-          foldFunction (i, f', s') acc = case required_suit of
-                  Nothing               -> if face == f' || suit == s'
-                                           || f' == 8 then
-                                              i:acc else acc
-                  (Just required_suit') -> if required_suit' == s'
-                                           || f' == 8 then
-                                              i:acc else acc
+    = map fst . filter (playable required_suit) $ processed
+    where processed              = zip [0..length hand - 1]
+                                   . map (\(Card f' s') -> (f', s')) $ hand
+          playable Nothing
+                   (_, (f', s')) = face == f' || suit == s' || f' == 8
+          playable (Just required)
+                   (_, (f', s')) = required == s' || f' == 8
 
 -- |Takes a shuffled deck and return 2 players that
 --  both have 8 cards along with the new deck.
