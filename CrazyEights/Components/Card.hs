@@ -1,4 +1,4 @@
-module Components.Card(Card(..), Suit(..)) where
+module Components.Card(Card(..), Suit(..), readSuit, isEight) where
 
 import Data.Char
 
@@ -15,3 +15,17 @@ data Suit = C | D | H | S deriving (Show, Eq)
 
 instance Eq Card where
     (==) (Card a b) (Card c d) = a == c && b == d
+
+readSuit :: IO (Maybe Suit)
+readSuit = getLine >>= parse
+    where
+      parse (x:_)
+        | first == 'c' = return $ Just C
+        | first == 'd' = return $ Just D
+        | first == 'h' = return $ Just H
+        | first == 's' = return $ Just S
+        | otherwise    = return Nothing
+        where first = toLower x
+
+isEight :: Card -> Bool
+isEight (Card face _) = face == 8
