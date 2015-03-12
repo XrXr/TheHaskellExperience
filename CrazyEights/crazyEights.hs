@@ -42,6 +42,28 @@ findPlayable (Card face suit) (Player hand) required_suit
           playable (Just required)
                    (_, (f', s')) = required == s' || f' == 8
 
+-- |A helper function that warps findPlayable for a turn
+turnPlayable :: Turn -> [Int]
+turnPlayable turn = findPlayable (discard turn) (activePlayer turn)
+                                 (forceSuit turn)
+
+-- |Attempt to advance a turn
+normalTurnAdvance :: Turn -> Maybe ([Int], Int -> Maybe Turn)
+normalTurnAdvance turn = if null playables then Nothing
+                                           else Just (playables, play)
+    where
+      playables = turnPlayable turn
+      active    = activePlayer turn
+      inRange i = i >= 0 && i < (length playables)
+      play i    = if inRange i then Just newTurn else Nothing
+          where
+            newPlayer = Player $ (removeAt playedI) . getHand $ active
+            newTurn   = turn { discard = (getHand active) !! playedI,
+                               activePlayer = otherPlayer turn,
+                               aiActive = not . aiActive $ turn,
+                               otherPlayer = newPlayer}
+            playedI   = playables !! i
+
 -- |Draw cards until the current player can play a card, then play that card.
 --  If there is no cards left in the deck, then current player will skip the
 --  turn. Return a tuple with the number of cards drawn, and the new Turn, or
