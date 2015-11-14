@@ -9,3 +9,6 @@ instance Show Player where
 
 addCard :: Card -> Player -> Player
 addCard c (Player l) = Player $ c:l
+
+finished :: Player -> Bool
+finished (Player l) = null l
