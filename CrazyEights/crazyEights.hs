@@ -12,7 +12,13 @@ data Turn = Turn {getPlayer :: Player,
                     getDeck :: Deck,
                  getDiscard :: Card,
                getForceSuit :: Maybe Char,
-            getPlayerActive :: Bool} deriving Show
+               playerActive :: Bool} deriving Show
+
+-- A turn, a list of possible discards and a function that returns the next
+-- turn when passed a valid index that corresponds to a discard.
+type SelectionInfo = (Turn, [Card], Int -> Maybe Turn)
+-- The new turn after drawing and number of cards drew
+type DrawInfo = (Turn, Int)
 
 instance Eq Turn where
     (==) a b = getDiscard a == getDiscard b
@@ -34,7 +40,7 @@ playerWon = finished . getPlayer
 
 activePlayerHand :: Turn -> [Card]
 activePlayerHand t
-    | getPlayerActive t = playerHand
+    | playerActive t = playerHand
     | otherwise = aiHand
     where
         (Player playerHand) = getPlayer t
@@ -42,18 +48,36 @@ activePlayerHand t
 
 game :: Turn -> IO ()
 game currentTurn
-    | aiWon currentTurn = putStrln "\nThe computer won!\n"
-    | playerWon currentTurn = putStrln "\nYou win!\n"
+    | aiWon currentTurn = putStrLn "\nThe computer won!\n"
+    | playerWon currentTurn = putStrLn "\nYou win!\n"
     | otherwise = do
         nextTurn <- advance' currentTurn
         if nextTurn == currentTurn then do -- current turn passed
             nextNextTurn <- advance' nextTurn
             if nextNextTurn == currentTurn then
-                putStrln "\nThe game ended in a draw!\n"
+                putStrLn "\nThe game ended in a draw!\n"
             else
                 game nextNextTurn
         else
             game nextTurn
+
+pass :: Turn -> Turn
+pass t = t{ playerActive = (not . playerActive) t}
+
+turnSubject :: Turn -> String
+turnSubject t = if playerActive t then "You" else "The computer"
+
+showDrawAdvance :: DrawInfo -> String
+showDrawAdvance (t, numDrew) =
+    intercalate " " [turnSubject t, base, extra]
+    where
+        base = "drew " ++ (show numDrew) ++ " cards"
+        extra = if (empty . getDeck) t then "and emptied the deck" else ""
+
+promptAndMakeMove :: SelectionInfo -> IO Turn
+promptAndMakeMove (oldTurn, playables, picker)
+    | playerActive oldTurn = return oldTurn
+    | otherwise = return . picker $ 0
 
 
 advance' :: Turn -> IO Turn
@@ -61,28 +85,26 @@ advance' t = do
     printStatus t
     case of pendingNewTurn
         (Left drawAdvanceInfo) -> do
-            printDrawAdvance drawAdvanceInfo
-            returnFirst drawAdvanceInfo
-        (Right selectionConstrain) -> do
-            printOptions selectionConstrain
-            selection <- selectCard selectionConstrain
+            putStrLn . showDrawAdvance $ drawAdvanceInfo
+            if deckEmpty pendingNewTurn then
+                return . pass $ pendingNewTurn
+            else do
+                putStrLn (turnSubject pendingNewTurn) ++ " was forced to pass :("
+                advance' . first $ drawAdvanceInfo
+        (Right selectionInfo) -> do
+            selection <- promptAndMakeMove selectionInfo
             printSelection selection
-            returnFirst selection
+            return . first $ selection
     where
         pendingNewTurn = advance t
-        returnFirst = return . first
 
--- Advance the current turn. Left is returned when there are no possible
--- discards. The Int is the number of cards drawn until a card is discarded.
--- Right happens when there is at least one card to discard. It contains a list
--- of possible discards and a function that returns the next turn when passed
--- a valid index that corresponds to a discard.
-advance :: Turn -> Either (Turn, Int) ([Card], Int -> Maybe Turn)
+-- Get a list of discardables, or else draw until one is found
+advance :: Turn -> Either DrawInfo SelectionInfo
 advance t =
     if null playables then
-        Left $ drawAdvance t
+        Left $ drawTillPlayable t
     else
-        Right (playables, cardPicker)
+        Right (t, playables, cardPicker)
     where
         activeHand = activePlayerHand t
         discard = getDiscard t

@@ -17,6 +17,9 @@ newDeck = Deck $ map (\x -> Card x H) [1..13]
 emptyDeck :: Deck
 emptyDeck = Deck []
 
+empty :: Deck -> Bool
+empty (Deck d) = null d
+
 draw :: Deck -> (Maybe Card, Deck)
 draw (Deck [])     = (Nothing, Deck [])
 draw (Deck (x:xs)) = (Just x, Deck xs)
