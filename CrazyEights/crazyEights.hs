@@ -51,9 +51,9 @@ game currentTurn
     | aiWon currentTurn = putStrLn "\nThe computer won!\n"
     | playerWon currentTurn = putStrLn "\nYou win!\n"
     | otherwise = do
-        nextTurn <- advance' currentTurn
+        nextTurn <- advance currentTurn
         if nextTurn == currentTurn then do -- current turn passed
-            nextNextTurn <- advance' nextTurn
+            nextNextTurn <- advance nextTurn
             if nextNextTurn == currentTurn then
                 putStrLn "\nThe game ended in a draw!\n"
             else
@@ -77,30 +77,28 @@ showDrawAdvance (t, numDrew) =
 promptAndMakeMove :: SelectionInfo -> IO Turn
 promptAndMakeMove (oldTurn, playables, picker)
     | playerActive oldTurn = return oldTurn
-    | otherwise = return . picker $ 0
+    | otherwise = return . picker $ 0  -- amazing AI
 
-
-advance' :: Turn -> IO Turn
-advance' t = do
+-- Advance a turn. The turn in the result should have a different active player
+advance :: Turn -> IO Turn
+advance t = do
     printStatus t
-    case of pendingNewTurn
+    case findPlayables t of
         (Left drawAdvanceInfo) -> do
             putStrLn . showDrawAdvance $ drawAdvanceInfo
             if deckEmpty pendingNewTurn then
                 return . pass $ pendingNewTurn
             else do
                 putStrLn (turnSubject pendingNewTurn) ++ " was forced to pass :("
-                advance' . first $ drawAdvanceInfo
+                advance . first $ drawAdvanceInfo
         (Right selectionInfo) -> do
             selection <- promptAndMakeMove selectionInfo
             printSelection selection
             return . first $ selection
-    where
-        pendingNewTurn = advance t
 
--- Get a list of discardables, or else draw until one is found
-advance :: Turn -> Either DrawInfo SelectionInfo
-advance t =
+-- Get a list of playables, or else draw until one is found
+findPlayables :: Turn -> Either DrawInfo SelectionInfo
+findPlayables t =
     if null playables then
         Left $ drawTillPlayable t
     else
