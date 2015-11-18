@@ -2,14 +2,15 @@ import Components.Card
 import Components.Deck
 import Components.Player
 import Data.Char (toUpper)
-import Data.List (intercalate)
+import Data.List (intercalate, splitAt)
 import System.Random (getStdGen, newStdGen, randomR)
 import Control.Monad (when)
+import Data.Maybe (fromJust)
 import Control.Concurrent (threadDelay)
 
-data Turn = Turn {getPlayer :: Player,
-                      getAI :: Player,
-                    getDeck :: Deck,
+data Turn = Turn {   player :: Player,
+                         ai :: Player,
+                       deck :: Deck,
                  getDiscard :: Card,
                getForceSuit :: Maybe Char,
                playerActive :: Bool} deriving Show
@@ -33,18 +34,18 @@ isPlayable expected actual = targetFace == actualFace ||
         actualSuit = getSuit actual
 
 aiWon :: Turn -> Bool
-aiWon = finished . getAI
+aiWon = finished . ai
 
 playerWon :: Turn -> Bool
-playerWon = finished . getPlayer
+playerWon = finished . player
 
 activePlayerHand :: Turn -> [Card]
 activePlayerHand t
     | playerActive t = playerHand
     | otherwise = aiHand
     where
-        (Player playerHand) = getPlayer t
-        (Player aiHand) = getAI t
+        (Player playerHand) = player t
+        (Player aiHand) = ai t
 
 game :: Turn -> IO ()
 game currentTurn
@@ -62,43 +63,79 @@ game currentTurn
             game nextTurn
 
 pass :: Turn -> Turn
-pass t = t{ playerActive = (not . playerActive) t}
+pass t = t{playerActive = (not . playerActive) t}
 
 turnSubject :: Turn -> String
 turnSubject t = if playerActive t then "You" else "The computer"
+
+deckEmpty :: Turn -> Bool
+deckEmpty = empty . deck
 
 showDrawAdvance :: DrawInfo -> String
 showDrawAdvance (t, numDrew) =
     intercalate " " [turnSubject t, base, extra]
     where
         base = "drew " ++ (show numDrew) ++ " cards"
-        extra = if (empty . getDeck) t then "and emptied the deck" else ""
+        extra = if deckEmpty t then "and emptied the deck" else ""
 
 promptAndMakeMove :: SelectionInfo -> IO Turn
 promptAndMakeMove (oldTurn, playables, picker)
-    | playerActive oldTurn = return oldTurn
-    | otherwise = return . picker $ 0  -- amazing AI
+    | playerActive oldTurn = return oldTurn  -- TODO
+    | otherwise = return . fromJust . picker $ 0  -- amazing AI
+
+
+printStatus :: Turn -> IO ()
+printStatus t = return ()  -- TODO
 
 -- Advance a turn. The turn in the result should have a different active player
 advance :: Turn -> IO Turn
 advance t = do
     printStatus t
-    case findPlayables t of
-        (Left drawAdvanceInfo) -> do
+    case possiblePlays t of
+        (Left drawAdvanceInfo@(turnAfterDraw, _)) -> do
             putStrLn . showDrawAdvance $ drawAdvanceInfo
-            if deckEmpty pendingNewTurn then
-                return . pass $ pendingNewTurn
+            if deckEmpty t then do
+                putStrLn $ (turnSubject t) ++ " was forced to pass :("
+                return . pass $ turnAfterDraw
             else do
-                putStrLn (turnSubject pendingNewTurn) ++ " was forced to pass :("
-                advance . first $ drawAdvanceInfo
-        (Right selectionInfo) -> do
-            selection <- promptAndMakeMove selectionInfo
-            printSelection selection
-            return . first $ selection
+                advance turnAfterDraw
+        (Right selectionInfo) -> promptAndMakeMove selectionInfo
+
+
+addCardToActivePlayer :: Card -> Turn -> (Player, Player)
+addCardToActivePlayer c t
+    | playerActive t = (addCard c (player t), ai t)
+    | otherwise = (player t, addCard c (ai t))
+
+drawTillPlayable :: Turn -> DrawInfo
+drawTillPlayable t = foldl folder (t, 0) [1..deckSize]
+    where
+        folder drawInfo@(t', numDrew) _ = case playables of
+            [] -> case draw oldDeck of
+                (Nothing, _) -> drawInfo
+                (Just cardDrew, newDeck) ->
+                    let (newPlayer, newAi) = addCardToActivePlayer cardDrew t'
+                    in (t'{
+                            deck = newDeck,
+                            player = newPlayer,
+                            ai = newAi
+                        }, numDrew + 1)
+            _ -> drawInfo
+            where
+                playables = findPlayables t'
+                oldDeck = deck t'
+
+
+
+findPlayables :: Turn -> [Card]
+findPlayables t = filter (isPlayable discard) activeHand
+    where
+        activeHand = activePlayerHand t
+        discard = getDiscard t
 
 -- Get a list of playables, or else draw until one is found
-findPlayables :: Turn -> Either DrawInfo SelectionInfo
-findPlayables t =
+possiblePlays :: Turn -> Either DrawInfo SelectionInfo
+possiblePlays t =
     if null playables then
         Left $ drawTillPlayable t
     else
@@ -106,7 +143,22 @@ findPlayables t =
     where
         activeHand = activePlayerHand t
         discard = getDiscard t
-        forceSuit = getForceSuit t
-        playables = filter (isPlayable discard) playerHand
-        cardPicker i = if outOfRange then Nothing else Just (playables !! i)
-            where outOfRange = i < 0 || i >= (lenth playables)
+        playables = findPlayables t
+        cardPicker i = if outOfRange then Nothing else
+            Just . pass $ if playerActive t then
+                    t{
+                        getDiscard = newDiscard,
+                        player = discardAt i (player t)
+                    }
+                else
+                    t{
+                        getDiscard = newDiscard,
+                        ai = discardAt i (ai t)
+                    }
+            where
+                outOfRange = i < 0 || i >= (length playables)
+                newDiscard = (playables !! i)
+
+main :: IO ()
+main = do
+    putStrLn "Work in progress. Stay tuned!"

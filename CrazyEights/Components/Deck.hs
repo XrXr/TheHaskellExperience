@@ -1,4 +1,4 @@
-module Components.Deck(newDeck, draw, drawNum, shuffle, Deck, emptyDeck) where
+module Components.Deck(newDeck, draw, drawNum, shuffle, Deck, emptyDeck, empty, deckSize) where
 
 import System.Random (RandomGen, randomR)
 import Components.Card
@@ -13,6 +13,9 @@ newDeck = Deck $ map (\x -> Card x H) [1..13]
               ++ map (\x -> Card x D) [1..13]
               ++ map (\x -> Card x S) [1..13]
               ++ map (\x -> Card x C) [1..13]
+
+deckSize :: Int
+deckSize = 13 * 4
 
 emptyDeck :: Deck
 emptyDeck = Deck []
