@@ -24,15 +24,6 @@ type DrawInfo = (Turn, Int)
 instance Eq Turn where
     (==) a b = getDiscard a == getDiscard b
 
-isPlayable :: Card -> Card -> Bool
-isPlayable expected actual = targetFace == actualFace ||
-                             targetSuit == actualSuit || actualFace == 8
-    where
-        targetFace = getFace expected
-        targetSuit = getSuit expected
-        actualFace = getFace actual
-        actualSuit = getSuit actual
-
 aiWon :: Turn -> Bool
 aiWon = finished . ai
 
@@ -78,11 +69,8 @@ showDrawAdvance (t, numDrew) =
         base = "drew " ++ (show numDrew) ++ " cards"
         extra = if deckEmpty t then "and emptied the deck" else ""
 
-promptAndMakeMove :: SelectionInfo -> IO Turn
-promptAndMakeMove (oldTurn, playables, picker)
-    | playerActive oldTurn = return oldTurn  -- TODO
-    | otherwise = return . fromJust . picker $ 0  -- amazing AI
-
+promptAndMakeMove :: Turn -> IO Turn
+promptAndMakeMove oldTurn = return oldTurn   -- TODO
 
 printStatus :: Turn -> IO ()
 printStatus t = return ()  -- TODO
@@ -91,15 +79,18 @@ printStatus t = return ()  -- TODO
 advance :: Turn -> IO Turn
 advance t = do
     printStatus t
-    case possiblePlays t of
-        (Left drawAdvanceInfo@(turnAfterDraw, _)) -> do
-            putStrLn . showDrawAdvance $ drawAdvanceInfo
-            if deckEmpty t then do
+    if null playables then do
+        let drawInfo@(turnAfterDraw, _) = drawTillPlayable t in do
+            putStrLn . showDrawAdvance $ drawInfo
+            if deckEmpty turnAfterDraw then do
                 putStrLn $ (turnSubject t) ++ " was forced to pass :("
                 return . pass $ turnAfterDraw
             else do
                 advance turnAfterDraw
-        (Right selectionInfo) -> promptAndMakeMove selectionInfo
+    else
+        promptAndMakeMove t
+    where
+        playables = findPlayables t
 
 
 addCardToActivePlayer :: Card -> Turn -> (Player, Player)
@@ -128,12 +119,14 @@ drawTillPlayable t = foldl folder (t, 0) [1..deckSize]
 
 
 findPlayables :: Turn -> [Card]
-findPlayables t = filter (isPlayable discard) activeHand
+findPlayables t = [] -- TODO
     where
         activeHand = activePlayerHand t
         discard = getDiscard t
 
+-- !! incorrect. Do not use.
 -- Get a list of playables, or else draw until one is found
+-- The force suit is not respected in the picker
 possiblePlays :: Turn -> Either DrawInfo SelectionInfo
 possiblePlays t =
     if null playables then
