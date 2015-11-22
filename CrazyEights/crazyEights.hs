@@ -38,6 +38,9 @@ isPlayable maybeForceSuit expected actual =
         actualFace = getFace actual
         actualSuit = getSuit actual
 
+isCrazy :: Card -> Bool
+isCrazy c = getFace c == 8
+
 aiWon :: Turn -> Bool
 aiWon = finished . ai
 
@@ -84,7 +87,27 @@ showDrawAdvance (t, numDrew) =
         extra = if deckEmpty t then "and emptied the deck" else ""
 
 promptAndMakeMove :: Turn -> IO Turn
-promptAndMakeMove oldTurn = return oldTurn   -- TODO
+promptAndMakeMove oldTurn
+    | playerActive oldTurn = return oldTurn   -- TODO
+    | otherwise = do
+        if isCrazy firstPlayable then do
+            gen <- newStdGen
+            let suit = allSuits !! fst (randomR (0, 3) gen)
+            putStrLn $ "Computer chose the suit to be " ++ show suit
+            return oldTurn {
+                getDiscard = firstPlayable,
+                getForceSuit = Just suit,
+                ai = Player newAIHand
+            }
+        else
+            return oldTurn {
+                getDiscard = firstPlayable,
+                ai = Player newAIHand
+            }
+    where
+        playables = findPlayables oldTurn
+        firstPlayable = head playables
+        newAIHand = tail playables
 
 printStatus :: Turn -> IO ()
 printStatus t = return ()  -- TODO
