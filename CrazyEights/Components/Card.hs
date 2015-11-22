@@ -4,6 +4,9 @@ import Data.Char
 
 data Suit = C | D | S | H deriving(Show, Eq)
 
+allSuits :: [Suit]
+allSuits = [C, D, S, H]
+
 char :: Suit -> Char
 char = head . show
 
@@ -14,10 +17,9 @@ instance Show Card where
         | face == 11 = combine 'J'
         | face == 12 = combine 'Q'
         | face == 13 = combine 'K'
-        | otherwise  = combine $ (head . show) face
+        | otherwise  = show face ++ show suit
         where
-            suitChar = char suit
-            combine a = a : suitChar : []
+            combine a = [a, char suit]
 
 listCards :: [Card] -> String
 listCards [] = "<empty deck>"

@@ -9,10 +9,7 @@ instance Show Deck where
     show (Deck xs) = listCards xs
 
 newDeck :: Deck
-newDeck = Deck $ map (\x -> Card x H) [1..13]
-              ++ map (\x -> Card x D) [1..13]
-              ++ map (\x -> Card x S) [1..13]
-              ++ map (\x -> Card x C) [1..13]
+newDeck = Deck $ [Card face suit | face <- [1..13], suit <- allSuits]
 
 deckSize :: Int
 deckSize = 13 * 4
