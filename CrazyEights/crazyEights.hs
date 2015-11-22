@@ -12,7 +12,7 @@ data Turn = Turn {   player :: Player,
                          ai :: Player,
                        deck :: Deck,
                  getDiscard :: Card,
-               getForceSuit :: Maybe Char,
+               getForceSuit :: Maybe Suit,
                playerActive :: Bool} deriving Show
 
 -- A turn, a list of possible discards and a function that returns the next
@@ -23,6 +23,20 @@ type DrawInfo = (Turn, Int)
 
 instance Eq Turn where
     (==) a b = getDiscard a == getDiscard b
+
+isPlayable :: Maybe Suit -> Card -> Card -> Bool
+isPlayable maybeForceSuit expected actual =
+    if actualFace == 8 then True else
+        case maybeForceSuit of
+            Nothing -> targetFace == actualFace ||
+                       targetSuit == actualSuit
+            (Just forcedSuit) -> targetFace == actualFace &&
+                actualSuit == forcedSuit
+    where
+        targetFace = getFace expected
+        targetSuit = getSuit expected
+        actualFace = getFace actual
+        actualSuit = getSuit actual
 
 aiWon :: Turn -> Bool
 aiWon = finished . ai
@@ -119,10 +133,11 @@ drawTillPlayable t = foldl folder (t, 0) [1..deckSize]
 
 
 findPlayables :: Turn -> [Card]
-findPlayables t = [] -- TODO
+findPlayables t = filter (isPlayable forcedSuit discard) activeHand
     where
         activeHand = activePlayerHand t
         discard = getDiscard t
+        forcedSuit = getForceSuit t
 
 -- !! incorrect. Do not use.
 -- Get a list of playables, or else draw until one is found
