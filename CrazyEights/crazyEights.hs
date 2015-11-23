@@ -92,6 +92,9 @@ showDrawAdvance (t, numDrew) =
 ansiGreen :: String -> String
 ansiGreen s = "\ESC[32m" ++ s ++ "\ESC[m"
 
+blankLine :: IO ()
+blankLine = putStrLn ""
+
 printPlayables :: [Card] -> String
 printPlayables cards = intercalate " " zipped
     where
@@ -99,12 +102,34 @@ printPlayables cards = intercalate " " zipped
         zipper :: String -> Int -> String
         zipper s i = ansiGreen (show i ++ ".") ++ s
 
+data DrawCard = DrawCard
+
+-- Take a number that is the lowest invalid selection
+askForSelection :: Int -> IO (Either Int DrawCard)
+askForSelection i = do
+    putStrLn $ "Type <" ++ ansiGreen "number" ++
+               "> to pick card, or \"draw\" to draw a card"
+    input <- getLine
+    if input == "draw" then
+        return $ Right DrawCard
+    else do
+        let parseResult = reads input :: [(Int, String)]
+            selection = fst . head $ parseResult
+        if null parseResult || outOfRange selection then
+            askForSelection i
+        else
+            return $ Left selection
+    where
+        outOfRange j = j < 0 || j >= i
+
 promptAndMakeMove :: Turn -> IO Turn
 promptAndMakeMove oldTurn
     | playerActive oldTurn = do
         putStrLn "It's your turn"
         putStrLn "Cards you can play:"
         putStrLn . printPlayables $ playables
+        blankLine
+        selection <- askForSelection (length playables)
         return oldTurn  -- TODO
     | otherwise = do
         let newAIHand = tail playables
@@ -134,7 +159,7 @@ printStatus t = do
             pause
             putStrLn $ subject ++ " must play a card from the " ++ show suit ++ " suit"
         _ -> return ()
-    putStrLn ""
+    blankLine
     where
         (Player aiHand) = ai t
         subject = turnSubject t
