@@ -24,6 +24,9 @@ type DrawInfo = (Turn, Int)
 instance Eq Turn where
     (==) a b = getDiscard a == getDiscard b
 
+pause :: IO ()
+pause = threadDelay 1000
+
 isPlayable :: Maybe Suit -> Card -> Card -> Bool
 isPlayable maybeForceSuit expected actual =
     if actualFace == 8 then True else
@@ -86,10 +89,26 @@ showDrawAdvance (t, numDrew) =
         base = "drew " ++ (show numDrew) ++ " cards"
         extra = if deckEmpty t then "and emptied the deck" else ""
 
+ansiGreen :: String -> String
+ansiGreen s = "\ESC[32m" ++ s ++ "\ESC[m"
+
+printPlayables :: [Card] -> String
+printPlayables cards = intercalate " " zipped
+    where
+        zipped = zipWith zipper (map show cards) [1..length cards]
+        zipper :: String -> Int -> String
+        zipper s i = ansiGreen (show i ++ ".") ++ s
+
 promptAndMakeMove :: Turn -> IO Turn
 promptAndMakeMove oldTurn
-    | playerActive oldTurn = return oldTurn   -- TODO
+    | playerActive oldTurn = do
+        putStrLn "It's your turn"
+        putStrLn "Cards you can play:"
+        putStrLn . printPlayables $ playables
+        return oldTurn  -- TODO
     | otherwise = do
+        let newAIHand = tail playables
+            firstPlayable = head playables
         if isCrazy firstPlayable then do
             gen <- newStdGen
             let suit = allSuits !! fst (randomR (0, 3) gen)
@@ -106,11 +125,20 @@ promptAndMakeMove oldTurn
             }
     where
         playables = findPlayables oldTurn
-        firstPlayable = head playables
-        newAIHand = tail playables
 
 printStatus :: Turn -> IO ()
-printStatus t = return ()  -- TODO
+printStatus t = do
+    putStrLn $ "The computer is holding " ++ aiSize ++ " cards"
+    case getForceSuit t of
+        (Just suit) -> do
+            pause
+            putStrLn $ subject ++ " must play a card from the " ++ show suit ++ " suit"
+        _ -> return ()
+    putStrLn ""
+    where
+        (Player aiHand) = ai t
+        subject = turnSubject t
+        aiSize = show . length $ aiHand
 
 -- Advance a turn. The turn in the result should have a different active player
 advance :: Turn -> IO Turn
@@ -124,8 +152,9 @@ advance t = do
                 return . pass $ turnAfterDraw
             else do
                 advance turnAfterDraw
-    else
-        promptAndMakeMove t
+    else do
+        nextTurn <- promptAndMakeMove t
+        return . pass $ nextTurn
     where
         playables = findPlayables t
 
