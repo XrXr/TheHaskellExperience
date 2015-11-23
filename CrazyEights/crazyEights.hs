@@ -1,11 +1,8 @@
 import Components.Card
 import Components.Deck
 import Components.Player
-import Data.Char (toUpper)
-import Data.List (intercalate, splitAt)
-import System.Random (getStdGen, newStdGen, randomR)
-import Control.Monad (when)
-import Data.Maybe (fromJust)
+import Data.List (intercalate)
+import System.Random (newStdGen, randomR)
 import Control.Concurrent (threadDelay)
 
 data Turn = Turn {   player :: Player,
@@ -15,9 +12,6 @@ data Turn = Turn {   player :: Player,
                getForceSuit :: Maybe Suit,
                playerActive :: Bool} deriving Show
 
--- A turn, a list of possible discards and a function that returns the next
--- turn when passed a valid index that corresponds to a discard.
-type SelectionInfo = (Turn, [Card], Int -> Maybe Turn)
 -- The new turn after drawing and number of cards drew
 type DrawInfo = (Turn, Int)
 
@@ -102,23 +96,24 @@ printPlayables cards = intercalate " " zipped
         zipper :: String -> Int -> String
         zipper s i = ansiGreen (show i ++ ".") ++ s
 
-data DrawCard = DrawCard
+data SelectionInfo = Chose Int | DrawCard deriving(Show)
 
 -- Take a number that is the lowest invalid selection
-askForSelection :: Int -> IO (Either Int DrawCard)
+askForSelection :: Int -> IO SelectionInfo
 askForSelection i = do
     putStrLn $ "Type <" ++ ansiGreen "number" ++
                "> to pick card, or \"draw\" to draw a card"
     input <- getLine
     if input == "draw" then
-        return $ Right DrawCard
+        return $ DrawCard
     else do
         let parseResult = reads input :: [(Int, String)]
             selection = fst . head $ parseResult
-        if null parseResult || outOfRange selection then
+            fullConsumption = null . snd . head $ parseResult
+        if null parseResult || not fullConsumption || outOfRange selection then
             askForSelection i
         else
-            return $ Left selection
+            return $ Chose selection
     where
         outOfRange j = j < 0 || j >= i
 
@@ -183,7 +178,6 @@ advance t = do
     where
         playables = findPlayables t
 
-
 addCardToActivePlayer :: Card -> Turn -> (Player, Player)
 addCardToActivePlayer c t
     | playerActive t = (addCard c (player t), ai t)
@@ -207,42 +201,12 @@ drawTillPlayable t = foldl folder (t, 0) [1..deckSize]
                 playables = findPlayables t'
                 oldDeck = deck t'
 
-
-
 findPlayables :: Turn -> [Card]
 findPlayables t = filter (isPlayable forcedSuit discard) activeHand
     where
         activeHand = activePlayerHand t
         discard = getDiscard t
         forcedSuit = getForceSuit t
-
--- !! incorrect. Do not use.
--- Get a list of playables, or else draw until one is found
--- The force suit is not respected in the picker
-possiblePlays :: Turn -> Either DrawInfo SelectionInfo
-possiblePlays t =
-    if null playables then
-        Left $ drawTillPlayable t
-    else
-        Right (t, playables, cardPicker)
-    where
-        activeHand = activePlayerHand t
-        discard = getDiscard t
-        playables = findPlayables t
-        cardPicker i = if outOfRange then Nothing else
-            Just . pass $ if playerActive t then
-                    t{
-                        getDiscard = newDiscard,
-                        player = discardAt i (player t)
-                    }
-                else
-                    t{
-                        getDiscard = newDiscard,
-                        ai = discardAt i (ai t)
-                    }
-            where
-                outOfRange = i < 0 || i >= (length playables)
-                newDiscard = (playables !! i)
 
 main :: IO ()
 main = do
