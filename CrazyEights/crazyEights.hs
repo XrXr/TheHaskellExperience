@@ -1,8 +1,10 @@
 import Components.Card
 import Components.Deck
 import Components.Player
+import Data.Char (toUpper)
 import Data.List (intercalate)
-import System.Random (newStdGen, randomR)
+import Data.Maybe (fromJust)
+import System.Random (newStdGen, randomR, getStdGen)
 import Control.Concurrent (threadDelay)
 
 data Turn = Turn {   player :: Player,
@@ -96,10 +98,10 @@ printPlayables cards = intercalate " " zipped
         zipper :: String -> Int -> String
         zipper s i = ansiGreen (show i ++ ".") ++ s
 
-data SelectionInfo = Chose Int | DrawCard deriving(Show)
+data Selection = Chose Int | DrawCard deriving(Show)
 
 -- Take a number that is the lowest invalid selection
-askForSelection :: Int -> IO SelectionInfo
+askForSelection :: Int -> IO Selection
 askForSelection i = do
     putStrLn $ "Type <" ++ ansiGreen "number" ++
                "> to pick card, or \"draw\" to draw a card"
@@ -117,6 +119,17 @@ askForSelection i = do
     where
         outOfRange j = j < 0 || j >= i
 
+askForSuit :: IO Suit
+askForSuit = do
+    input <- getLine
+    let normalized = toUpper . head $ input
+        parseResult = reads [normalized] :: [(Suit, String)]
+    if length input /= 1 || null parseResult then do
+        putStrLn "Invalid suit. Try again: (C, D, S, H)"
+        askForSuit
+    else
+        return . fst . head $ parseResult
+
 promptAndMakeMove :: Turn -> IO Turn
 promptAndMakeMove oldTurn
     | playerActive oldTurn = do
@@ -125,7 +138,30 @@ promptAndMakeMove oldTurn
         putStrLn . printPlayables $ playables
         blankLine
         selection <- askForSelection (length playables)
-        return oldTurn  -- TODO
+        case selection of
+            DrawCard -> case draw . deck $ oldTurn of
+                (Just cardDrew, deckAfterDraw) -> do
+                    let (newPlayer, _) = addCardToActivePlayer cardDrew oldTurn
+                    return oldTurn{
+                        player = newPlayer,
+                        deck = deckAfterDraw
+                    }
+                (Nothing, _) -> do
+                    putStrLn "Cannot draw from an empty deck :("
+                    promptAndMakeMove oldTurn
+            (Chose idx) -> do
+                let (afterPlay, played) = discardAt idx (player oldTurn)
+                    turnWithPlayMade = pass oldTurn{
+                        getDiscard = played,
+                        player = afterPlay
+                    }
+                if isCrazy played then do
+                    putStrLn "You have played an eight. Please choose a suit \
+                        \(C, D, S, H)"
+                    suit <- askForSuit
+                    return turnWithPlayMade { getForceSuit = Just suit }
+                else
+                    return turnWithPlayMade
     | otherwise = do
         let newAIHand = tail playables
             firstPlayable = head playables
@@ -208,6 +244,24 @@ findPlayables t = filter (isPlayable forcedSuit discard) activeHand
         discard = getDiscard t
         forcedSuit = getForceSuit t
 
+dealStartingHand :: Deck -> Turn
+dealStartingHand fullDeck = Turn {
+    player = (Player playerHand),
+    ai = (Player aiHand),
+    deck = deck'',
+    getDiscard = (fromJust discard),
+    getForceSuit = Nothing,
+    playerActive = True
+}
+    where (playerHand, deck)   = drawNum 8 fullDeck
+          (aiHand, deck') = drawNum 8 deck
+          (discard, deck'') = draw deck'
+
 main :: IO ()
 main = do
-    putStrLn "Work in progress. Stay tuned!"
+    putStrLn "Welcome to Crazy Eights!"
+    putStrLn "Press enter to start"
+    getLine
+    gen <- getStdGen
+    game . dealStartingHand . (shuffle newDeck) $ gen
+    pause

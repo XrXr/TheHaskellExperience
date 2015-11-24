@@ -2,7 +2,7 @@ module Components.Card where
 
 import Data.Char
 
-data Suit = C | D | S | H deriving(Show, Eq)
+data Suit = C | D | S | H deriving(Show, Eq, Read)
 
 allSuits :: [Suit]
 allSuits = [C, D, S, H]
