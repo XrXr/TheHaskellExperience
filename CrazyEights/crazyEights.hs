@@ -21,7 +21,7 @@ instance Eq Turn where
     (==) a b = getDiscard a == getDiscard b
 
 pause :: IO ()
-pause = threadDelay 1000
+pause = threadDelay 1000000
 
 isPlayable :: Maybe Suit -> Card -> Card -> Bool
 isPlayable maybeForceSuit expected actual =
@@ -29,8 +29,7 @@ isPlayable maybeForceSuit expected actual =
         case maybeForceSuit of
             Nothing -> targetFace == actualFace ||
                        targetSuit == actualSuit
-            (Just forcedSuit) -> targetFace == actualFace &&
-                actualSuit == forcedSuit
+            (Just forcedSuit) -> actualSuit == forcedSuit
     where
         targetFace = getFace expected
         targetSuit = getSuit expected
@@ -39,6 +38,11 @@ isPlayable maybeForceSuit expected actual =
 
 isCrazy :: Card -> Bool
 isCrazy c = getFace c == 8
+
+without :: Eq a => [a] -> a -> [a]
+without list elem = if null after then before else before ++ tail after
+    where
+        (before, after) = break ((==) elem) list
 
 aiWon :: Turn -> Bool
 aiWon = finished . ai
@@ -82,7 +86,7 @@ showDrawAdvance :: DrawInfo -> String
 showDrawAdvance (t, numDrew) =
     intercalate " " [turnSubject t, base, extra]
     where
-        base = "drew " ++ (show numDrew) ++ " cards"
+        base = "had to draw " ++ (show numDrew) ++ " cards for lack of plays"
         extra = if deckEmpty t then "and emptied the deck" else ""
 
 ansiGreen :: String -> String
@@ -110,7 +114,7 @@ askForSelection i = do
         return $ DrawCard
     else do
         let parseResult = reads input :: [(Int, String)]
-            selection = fst . head $ parseResult
+            selection = (fst . head $ parseResult) - 1
             fullConsumption = null . snd . head $ parseResult
         if null parseResult || not fullConsumption || outOfRange selection then
             askForSelection i
@@ -133,7 +137,8 @@ askForSuit = do
 promptAndMakeMove :: Turn -> IO Turn
 promptAndMakeMove oldTurn
     | playerActive oldTurn = do
-        putStrLn "It's your turn"
+        let handSize = show . length . activePlayerHand $ oldTurn
+        putStrLn $ "It's your turn. You are holding " ++ handSize ++ " cards"
         putStrLn "Cards you can play:"
         putStrLn . printPlayables $ playables
         blankLine
@@ -142,7 +147,7 @@ promptAndMakeMove oldTurn
             DrawCard -> case draw . deck $ oldTurn of
                 (Just cardDrew, deckAfterDraw) -> do
                     let (newPlayer, _) = addCardToActivePlayer cardDrew oldTurn
-                    return oldTurn{
+                    promptAndMakeMove oldTurn{
                         player = newPlayer,
                         deck = deckAfterDraw
                     }
@@ -150,35 +155,34 @@ promptAndMakeMove oldTurn
                     putStrLn "Cannot draw from an empty deck :("
                     promptAndMakeMove oldTurn
             (Chose idx) -> do
-                let (afterPlay, played) = discardAt idx (player oldTurn)
-                    turnWithPlayMade = pass oldTurn{
+                let played = playables !! idx
+                    afterPlay = oldTurn{
                         getDiscard = played,
-                        player = afterPlay
+                        player = discardCard played (player oldTurn),
+                        getForceSuit = Nothing
                     }
                 if isCrazy played then do
                     putStrLn "You have played an eight. Please choose a suit \
                         \(C, D, S, H)"
                     suit <- askForSuit
-                    return turnWithPlayMade { getForceSuit = Just suit }
+                    return afterPlay{ getForceSuit = Just suit }
                 else
-                    return turnWithPlayMade
+                    return afterPlay
     | otherwise = do
-        let newAIHand = tail playables
-            firstPlayable = head playables
+        let firstPlayable = head playables
+            afterPlay = oldTurn {
+                getDiscard = firstPlayable,
+                ai = discardCard firstPlayable (ai oldTurn),
+                getForceSuit = Nothing
+            }
+        putStrLn $ "The computer played " ++ show firstPlayable
         if isCrazy firstPlayable then do
             gen <- newStdGen
             let suit = allSuits !! fst (randomR (0, 3) gen)
             putStrLn $ "Computer chose the suit to be " ++ show suit
-            return oldTurn {
-                getDiscard = firstPlayable,
-                getForceSuit = Just suit,
-                ai = Player newAIHand
-            }
+            return afterPlay{ getForceSuit = Just suit }
         else
-            return oldTurn {
-                getDiscard = firstPlayable,
-                ai = Player newAIHand
-            }
+            return afterPlay
     where
         playables = findPlayables oldTurn
 
@@ -201,13 +205,13 @@ advance :: Turn -> IO Turn
 advance t = do
     printStatus t
     if null playables then do
-        let drawInfo@(turnAfterDraw, _) = drawTillPlayable t in do
-            putStrLn . showDrawAdvance $ drawInfo
-            if deckEmpty turnAfterDraw then do
-                putStrLn $ (turnSubject t) ++ " was forced to pass :("
-                return . pass $ turnAfterDraw
-            else do
-                advance turnAfterDraw
+        let drawInfo@(turnAfterDraw, _) = drawTillPlayable t
+        putStrLn . showDrawAdvance $ drawInfo
+        if deckEmpty turnAfterDraw then do
+            putStrLn $ (turnSubject t) ++ " had to pass :("
+            return . pass $ turnAfterDraw{ getForceSuit = Nothing }
+        else
+            advance turnAfterDraw
     else do
         nextTurn <- promptAndMakeMove t
         return . pass $ nextTurn

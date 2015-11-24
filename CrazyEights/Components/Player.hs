@@ -13,13 +13,10 @@ addCard c (Player l) = Player $ c:l
 finished :: Player -> Bool
 finished (Player l) = null l
 
-discardAt :: Int -> Player -> (Player, Card)
-discardAt i (Player hand) = (Player newHand, discarded)
+without :: Eq a => a -> [a] -> [a]
+without elem list = if null after then before else before ++ tail after
     where
-        (newHand, discarded) = removeAt i hand
+        (before, after) = break ((==) elem) list
 
--- not very efficient, but cool
-removeAt :: Int -> [a] -> ([a], a)
-removeAt i l = (a ++ b, removed)
-    where
-        (a, removed:b) = splitAt i l
+discardCard :: Card -> Player -> Player
+discardCard c (Player oldHand) = Player $ without c oldHand
