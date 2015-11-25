@@ -27,8 +27,7 @@ isPlayable :: Maybe Suit -> Card -> Card -> Bool
 isPlayable maybeForceSuit expected actual =
     if actualFace == 8 then True else
         case maybeForceSuit of
-            Nothing -> targetFace == actualFace ||
-                       targetSuit == actualSuit
+            Nothing -> targetFace == actualFace || targetSuit == actualSuit
             (Just forcedSuit) -> actualSuit == forcedSuit
     where
         targetFace = getFace expected
@@ -107,8 +106,8 @@ data Selection = Chose Int | DrawCard deriving(Show)
 -- Take a number that is the lowest invalid selection
 askForSelection :: Int -> IO Selection
 askForSelection i = do
-    putStrLn $ "Type <" ++ ansiGreen "number" ++
-               "> to pick card, or \"draw\" to draw a card"
+    putStrLn $ "Type " ++ ansiGreen "<number>" ++
+               " to pick card, or \"draw\" to draw a card"
     input <- getLine
     if input == "draw" then
         return $ DrawCard
@@ -137,8 +136,10 @@ askForSuit = do
 promptAndMakeMove :: Turn -> IO Turn
 promptAndMakeMove oldTurn
     | playerActive oldTurn = do
-        let handSize = show . length . activePlayerHand $ oldTurn
+        let hand = activePlayerHand $ oldTurn
+            handSize = show . length $ hand
         putStrLn $ "It's your turn. You are holding " ++ handSize ++ " cards"
+        putStrLn $ "Your hand: " ++ listCards hand
         putStrLn "Cards you can play:"
         putStrLn . printPlayables $ playables
         blankLine
@@ -175,11 +176,13 @@ promptAndMakeMove oldTurn
                 ai = discardCard firstPlayable (ai oldTurn),
                 getForceSuit = Nothing
             }
-        putStrLn $ "The computer played " ++ show firstPlayable
+        putStrLn $ "The computer played " ++ (ansiGreen . show) firstPlayable
+        pause
         if isCrazy firstPlayable then do
             gen <- newStdGen
             let suit = allSuits !! fst (randomR (0, 3) gen)
             putStrLn $ "Computer chose the suit to be " ++ show suit
+            pause
             return afterPlay{ getForceSuit = Just suit }
         else
             return afterPlay
@@ -192,9 +195,9 @@ printStatus t = do
     case getForceSuit t of
         (Just suit) -> do
             pause
-            putStrLn $ subject ++ " must play a card from the " ++ show suit ++ " suit"
+            putStrLn $ subject ++ " must play a card from the "
+                ++ (ansiGreen . show) suit ++ " suit"
         _ -> return ()
-    blankLine
     where
         (Player aiHand) = ai t
         subject = turnSubject t
@@ -207,13 +210,16 @@ advance t = do
     if null playables then do
         let drawInfo@(turnAfterDraw, _) = drawTillPlayable t
         putStrLn . showDrawAdvance $ drawInfo
+        pause
         if deckEmpty turnAfterDraw then do
             putStrLn $ (turnSubject t) ++ " had to pass :("
+            blankLine
             return . pass $ turnAfterDraw{ getForceSuit = Nothing }
         else
             advance turnAfterDraw
     else do
         nextTurn <- promptAndMakeMove t
+        blankLine
         return . pass $ nextTurn
     where
         playables = findPlayables t
